@@ -1,0 +1,26 @@
+CS4471 Computer Security Fall 2014
+Project 2 Fine Grain Encryption
+Liang Yan and Jaclyn Barnes
+
+Implementation overview:
+fge.c - The main file, fge.c sets core dump to zero, validates information passed in from the terminal and calls appropriate methods for each command option. For -s, it calls process_s, which further validates the input and calls encryptFile (contained in encryptFile.c). For -c, it calls decryptFile (contained in decryptFile.c). For -u, process_u is called, which opens the .enc file, verifies it is a secured file using the Magic number, and prints the unclassified portion of the file to the terminal. For -key, keyVerify is called (contained in a c file of the same name).
+encryptFile.c - This file contains the encryptFile method and several helper methods (encrypt and allocate_ciphertext). The file indicated for encryption is checked for the Magic integer. Using the information passed into the encryptFile method from fge.c, an encrypted .enc file is created containing the necessary non-text information, the encrypted portion of the plaintext file, and the unencrypted plaintext. A key is generated randomly using /dev/urandom and then encrypted using a key generated using the getKkey method (contained in getKkey.c).
+decryptFile.c - Gets the key from getKey (contained in keyVerify), uses it to decrypt the encrypted portion of the .enc file matching the name passed in from fge.c. It loops through the decrypted data and the unencrypted data, printing them to stdout based on the offset and lengths recorded. 
+getKkey.c - This file includes the methods getInput and getKkey. getInput is used to turn off echo in the terminal and get the passphrase from the user. getKkey runs SHA1 on the passphrase and generates the key used to encrypt the random key used in the Blowfish encryption.
+keyVerify.c - Solicits passphrase from user and generates key using getKkey. Then, checks if the key can be used to decrypt KID in the .enc. to match the plaintext KID. Tells user if the key in hex if it was correct or that the key was incorrect.
+utility.c - Contains helper methods used in multiple files, printf_usuage (to print instructions in case an invalid command is entered), fprint_string_as_hex (to print a key in hexadecimal to the stdout), get_random_key (to generate a random key of appropriate length using /dev/urandom for use encrypting files), get_enc_file (to generate the .enc file name from a plaintext file name), check_KID (to verify two given KID values match), get_random_kid (to generate a random KID value using /dev/urandom), mystrncopy and mystrncat (to safely copy and concatenate strings when the standard methods don't work due to issues regarding the use of \0 in key values for this project).
+Makefile - make could compile all files, and make clean could clean unnecessary object files and .enc file
+
+
+KID Generation: 
+KID is generated randomly for each file using /dev/urandom.
+However, it might be better to create it using SHA1 on the cipher block, as that would function as a checksum, verifying that the encrypted portion of the .enc file has not been modified.
+
+Does this scheme reveal information about the length of the classified content? If not, explain how it is concealed. If so, explain how one might conceal the length.
+
+Our scheme does reveal some information about the length of the classified content. It is possible to determine how long the portion of the .enc file encrypted with Kfile is in total and how many segments there are, but it is not possible to determine how long each individual encrypted portion is. To give a very crude example, an attacker could determine that a file had 100 bytes of encrypted content and from the number of sections marked with an X in the unclassified version of the file would know how many sections of classified content there are, but they wouldn't be able to tell the distribution. It could be five 20 byte segments or one 96 byte and four 1 byte segments, etc. 
+It would be possible to conceal the length by padding the encrypted portion of the .enc file to some standard length. 
+
+Can your file be read on any architecture? Consider how the machine endianess might affect the storage and retrieval of the integer values.
+
+No, our file can't be read on any architecture. We convert from chars to ints for some sections (i.e. KID, Si, Li) and such bitwise operations are effected by machine endianess. If the file was written on an architecture using big endianess, a machine using little endianess would not be able to decrypt it properly. It would be possible to solve this issue by recording the endianess of the architecture used to encrypt the file in the file in plaintext, then checking the endianess of the architecture used in each attempt to decrypt the file. The program would need to be modified, so that if they are the same endianess, the program runs normally, but if there are different, it uses different calls that take it into account for the appropriate operations.

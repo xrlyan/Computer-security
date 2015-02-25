@@ -1,0 +1,63 @@
+CS4471 Computer Security Fall 2014
+Project 3 Sume
+Team members: Liang Yan and Jaclyn Barnes
+Slip days used: 1
+
+Implementation overview:
+  
+  sume.c:
+    Clear environment
+    Derives the home directory of sume from the first argument of main
+    Derives the username of the host user from the name of the home directory
+    Checks the whitelist for acceptable commands using the parse function from parse.c
+    Checks that the configuration file is acceptable and the guest user is included
+      using the checkConfig function from checkConfig.c
+    Gets current ruid, euid, and suid
+    Executes given command with an empty environment
+    
+  checkConfig.c:
+    checkConfig():
+      Parameters: 
+        char* fp: filepath to the host user's home directory
+        char* hostUsr: the host user's username
+      
+      Forms filepath to the configuration file .sumeCfg
+      Opens .sumeCfg using open() and specifiying the read-only mode
+      Checks that .sumeCfg is not group or world writeable
+      Checks that .sumeCfg is owned by the host user
+      Gets the process ruid
+      Opens .sumeCfg as a file object using the existing file descriptor from the earlier
+        open call inorder to use fscanf
+      Uses fscanf to loop through the file reading each username, getting their uid, and
+        comparing each allowed uid to the guest user's uid
+      Uses fclose() to close .sumeCfg, this closes both the file from both the open() and
+        fdopen() call
+      Returns -1 for failure and 0 for success
+
+  findPath.c:
+    find_path():
+      Parameters:
+        int argc: The argc from the main function
+        char **argv: Pointer to argv from the main function
+        char *availablePath: The full filepath to sume from the command
+
+      Gets current working directory.
+      Determines if the filepath passed as the last argument in the command is absolute
+      Makes filepath absolute if necessary
+      Checks if the filepath is acceptable (in the host user's home directory or a subdirectory)
+      Returns success if the filepath is acceptable, otherwise returns failure
+
+  parse.c:
+    Checks for less than 3 arguments
+    Checks for ls, /bin/ls, cat, or /bin/cat
+    If the command is ls or /bin/ls, checks the options are none, -s, -m, or a
+      combination of the two
+
+  utility.c:
+    printf_usuage(): prints brief instructions for using sume to stdout
+
+  header.h:
+    include statements, definitions, and function prototypes for all the files
+    
+Whitelist of allowed commands: 
+  We compare against hard-coded strings for ls, /bin/ls, cat, and /bin/cat. For ls and /bin/ls, we further compare any options against -s and -m.
